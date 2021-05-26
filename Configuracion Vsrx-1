@@ -1,5 +1,5 @@
-jcluser@vSRX1# show 
-## Last changed: 2021-05-26 16:55:40 UTC
+jcluser@vSRX1> show configuration 
+## Last commit: 2021-05-26 17:29:33 UTC by jcluser
 version 18.3R1.9;
 system {
     login {
@@ -8,17 +8,17 @@ system {
             class super-user;
             authentication {
                 encrypted-password "$6$iKgVA34A$AR62xbpriXxVbDQuT6DMOph1r069/ytRiJKThwdXK/Ol2U6k3knRxtPonzIHGmSzQUwdDgmbzT7JM9Rnx7QRF."; ## SECRET-DATA
-            }
-        }
-    }
-    root-authentication {
+            }                           
+        }                               
+    }                                   
+    root-authentication {               
         encrypted-password "$6$dSTbXxFy$KeCmFiHX6XSMkn3DX9GdrZY1Fb.iDnrGRpdJA9XWMvtaOKfvFe/n8yU2AMp8HJi5aj7ZVWazmdt.bkc4rtTss1"; ## SECRET-DATA
     }
     host-name vSRX1;
     scripts {
         language python;
     }
-    services {                          
+    services {
         ssh {
             root-login allow;
         }
@@ -58,9 +58,18 @@ system {
         }
     }
 }
+security {
+    forwarding-options {
+        family {
+            mpls {
+                mode packet-based;
+            }
+        }
+    }
+}
 interfaces {
-    ge-0/0/0 {
-        encapsulation ethernet-ccc;     
+    ge-0/0/0 {                          
+        encapsulation ethernet-ccc;
         unit 0 {
             family ccc;
         }
@@ -70,7 +79,11 @@ interfaces {
             family inet {
                 address 2.2.2.1/24;
             }
-            family mpls;
+            family mpls {
+                filter {
+                    input For-MPLS;
+                }
+            }
         }
     }
     fxp0 {
@@ -81,10 +94,10 @@ interfaces {
         }
     }
     lo0 {
-        unit 0 {                        
+        unit 0 {
             family inet {
                 address 10.0.0.2/32;
-            }
+            }                           
         }
     }
 }
@@ -95,6 +108,15 @@ routing-options {
     autonomous-system 65412;
 }
 protocols {
+    rsvp {
+        interface ge-0/0/1.0;
+    }
+    mpls {
+        label-switched-path TO-LAN-B {
+            to 10.0.0.1;
+        }
+        interface ge-0/0/1.0;
+    }
     bgp {
         group L2VPN {
             type internal;
@@ -102,9 +124,9 @@ protocols {
             family l2vpn {
                 signaling;
             }
-            neighbor 10.0.0.1;          
+            neighbor 10.0.0.1;
         }
-    }
+    }                                   
     ospf {
         traffic-engineering;
         area 0.0.0.0 {
@@ -115,6 +137,88 @@ protocols {
         }
     }
 }
+firewall {
+    family mpls {
+        filter For-MPLS {
+            term 1 {
+                then packet-mode;
+            }
+        }
+    }
+}
+routing-instances {
+    L2VPN {
+        instance-type l2vpn;
+        interface ge-0/0/0.0;
+        route-distinguisher 10.0.0.2:100;
+        vrf-target target:65412:100;
+        protocols {
+            l2vpn {
+                encapsulation-type ethernet;
+                site LAN-A {            
+                    site-identifier 2;
+                    interface ge-0/0/0.0 {
+                        remote-site-id 1;
+                    }
+                }
+            }
+        }
+    }
+}
+
+jcluser@vSRX1> 
 
 [edit]
 jcluser@vSRX1# 
+*******************************************
+*******************************************
+*******************************************
+
+jcluser@vSRX1> show configuration | display set 
+set version 18.3R1.9
+set system login user jcluser uid 2000
+set system login user jcluser class super-user
+set system login user jcluser authentication encrypted-password "$6$iKgVA34A$AR62xbpriXxVbDQuT6DMOph1r069/ytRiJKThwdXK/Ol2U6k3knRxtPonzIHGmSzQUwdDgmbzT7JM9Rnx7QRF."
+set system root-authentication encrypted-password "$6$dSTbXxFy$KeCmFiHX6XSMkn3DX9GdrZY1Fb.iDnrGRpdJA9XWMvtaOKfvFe/n8yU2AMp8HJi5aj7ZVWazmdt.bkc4rtTss1"
+set system host-name vSRX1
+set system scripts language python
+set system services ssh root-login allow
+set system services netconf ssh
+set system services rest http port 3000
+set system services web-management http interface fxp0.0
+set system services web-management https system-generated-certificate
+set system services web-management https interface fxp0.0
+set system syslog user * any emergency
+set system syslog file messages any any
+set system syslog file messages authorization info
+set system syslog file interactive-commands interactive-commands any
+set system license autoupdate url https://ae1.juniper.net/junos/key_retrieval
+set security forwarding-options family mpls mode packet-based
+set interfaces ge-0/0/0 encapsulation ethernet-ccc
+set interfaces ge-0/0/0 unit 0 family ccc
+set interfaces ge-0/0/1 unit 0 family inet address 2.2.2.1/24
+set interfaces ge-0/0/1 unit 0 family mpls filter input For-MPLS
+set interfaces fxp0 unit 0 family inet dhcp
+set interfaces lo0 unit 0 family inet address 10.0.0.2/32
+set routing-options static route 10.100.22.0/24 next-hop 10.100.12.2
+set routing-options autonomous-system 65412
+set protocols rsvp interface ge-0/0/1.0 
+set protocols mpls label-switched-path TO-LAN-B to 10.0.0.1
+set protocols mpls interface ge-0/0/1.0
+set protocols bgp group L2VPN type internal
+set protocols bgp group L2VPN local-address 10.0.0.2
+set protocols bgp group L2VPN family l2vpn signaling
+set protocols bgp group L2VPN neighbor 10.0.0.1
+set protocols ospf traffic-engineering
+set protocols ospf area 0.0.0.0 interface ge-0/0/1.0
+set protocols ospf area 0.0.0.0 interface lo0.0 passive
+set firewall family mpls filter For-MPLS term 1 then packet-mode
+set routing-instances L2VPN instance-type l2vpn
+set routing-instances L2VPN interface ge-0/0/0.0
+set routing-instances L2VPN route-distinguisher 10.0.0.2:100
+set routing-instances L2VPN vrf-target target:65412:100
+set routing-instances L2VPN protocols l2vpn encapsulation-type ethernet
+set routing-instances L2VPN protocols l2vpn site LAN-A site-identifier 2
+set routing-instances L2VPN protocols l2vpn site LAN-A interface ge-0/0/0.0 remote-site-id 1
+
+jcluser@vSRX1> 
