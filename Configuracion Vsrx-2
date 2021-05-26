@@ -1,5 +1,5 @@
-jcluser@vSRX2# run show configuration 
-## Last commit: 2021-05-26 16:03:37 UTC by jcluser
+jcluser@vSRX2> show configuration 
+## Last commit: 2021-05-26 17:53:08 UTC by jcluser
 version 18.3R1.9;
 system {
     login {
@@ -40,9 +40,9 @@ system {
             }
         }
     }
-    syslog {
+    syslog {                            
         user * {
-            any emergency;              
+            any emergency;
         }
         file messages {
             any any;
@@ -58,13 +58,32 @@ system {
         }
     }
 }
+security {
+    forwarding-options {
+        family {
+            mpls {
+                mode packet-based;
+            }
+        }
+    }
+}
 interfaces {
+    ge-0/0/0 {
+        encapsulation ethernet-ccc;     
+        unit 0 {
+            family ccc;
+        }
+    }
     ge-0/0/1 {
         unit 0 {
             family inet {
                 address 2.2.2.1/24;
             }
-            family mpls;
+            family mpls {
+                filter {
+                    input For-MPLS;
+                }
+            }
         }
     }
     fxp0 {
@@ -77,23 +96,83 @@ interfaces {
     lo0 {
         unit 0 {
             family inet {
-                address 10.100.100.2/32;
+                address 10.0.0.1/32;
             }
-        }
+        }                               
     }
 }
 routing-options {
     static {
         route 10.100.11.0/24 next-hop 10.100.12.1;
     }
+    router-id 10.0.0.1;
+    autonomous-system 65412;
 }
-                                        
-[edit]
-jcluser@vSRX2# 
+protocols {
+    rsvp {
+        interface ge-0/0/1.0;
+    }
+    mpls {
+        label-switched-path TO-LAN-A {
+            to 10.0.0.2;
+        }
+        interface ge-0/0/1.0;
+    }
+    bgp {
+        family l2vpn {
+            signaling;
+        }
+        group L2VPN {
+            type internal;
+            local-address 10.0.0.1;
+            neighbor 10.0.0.2;
+        }
+    }                                   
+    ospf {
+        traffic-engineering;
+        area 0.0.0.0 {
+            interface ge-0/0/1.0;
+            interface lo0.0 {
+                passive;
+            }
+        }
+    }
+}
+firewall {
+    family mpls {
+        filter For-MPLS {
+            term 1 {
+                then packet-mode;
+            }
+        }
+    }
+}
+routing-instances {
+    L2VPN-1 {
+        instance-type l2vpn;
+        interface ge-0/0/0.0;
+        route-distinguisher 10.0.0.1:100;
+        vrf-target target:65412:100;
+        protocols {
+            l2vpn {
+                encapsulation-type ethernet;
+                site LAN-B {            
+                    site-identifier 1;
+                    interface ge-0/0/0.0 {
+                        remote-site-id 2;
+                    }
+                }
+            }
+        }
+    }
+}
+
+jcluser@vSRX2> 
 
 *********************************************************
 **********************************************************
 **********************************************************
+
 jcluser@vSRX2> show configuration | display set 
 set version 18.3R1.9
 set system login user jcluser uid 2000
@@ -113,8 +192,33 @@ set system syslog file messages any any
 set system syslog file messages authorization info
 set system syslog file interactive-commands interactive-commands any
 set system license autoupdate url https://ae1.juniper.net/junos/key_retrieval
+set security forwarding-options family mpls mode packet-based
+set interfaces ge-0/0/0 encapsulation ethernet-ccc
+set interfaces ge-0/0/0 unit 0 family ccc
 set interfaces ge-0/0/1 unit 0 family inet address 2.2.2.1/24
-set interfaces ge-0/0/1 unit 0 family mpls
+set interfaces ge-0/0/1 unit 0 family mpls filter input For-MPLS
 set interfaces fxp0 unit 0 family inet dhcp
-set interfaces lo0 unit 0 family inet address 10.100.100.2/32
+set interfaces lo0 unit 0 family inet address 10.0.0.1/32
 set routing-options static route 10.100.11.0/24 next-hop 10.100.12.1
+set routing-options router-id 10.0.0.1
+set routing-options autonomous-system 65412
+set protocols rsvp interface ge-0/0/1.0
+set protocols mpls label-switched-path TO-LAN-A to 10.0.0.2
+set protocols mpls interface ge-0/0/1.0
+set protocols bgp family l2vpn signaling
+set protocols bgp group L2VPN type internal
+set protocols bgp group L2VPN local-address 10.0.0.1
+set protocols bgp group L2VPN neighbor 10.0.0.2
+set protocols ospf traffic-engineering
+set protocols ospf area 0.0.0.0 interface ge-0/0/1.0
+set protocols ospf area 0.0.0.0 interface lo0.0 passive
+set firewall family mpls filter For-MPLS term 1 then packet-mode
+set routing-instances L2VPN-1 instance-type l2vpn
+set routing-instances L2VPN-1 interface ge-0/0/0.0
+set routing-instances L2VPN-1 route-distinguisher 10.0.0.1:100
+set routing-instances L2VPN-1 vrf-target target:65412:100
+set routing-instances L2VPN-1 protocols l2vpn encapsulation-type ethernet
+set routing-instances L2VPN-1 protocols l2vpn site LAN-B site-identifier 1
+set routing-instances L2VPN-1 protocols l2vpn site LAN-B interface ge-0/0/0.0 remote-site-id 2
+
+jcluser@vSRX2> 
