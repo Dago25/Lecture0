@@ -1,0 +1,120 @@
+jcluser@vSRX2# run show configuration 
+## Last commit: 2021-05-26 16:03:37 UTC by jcluser
+version 18.3R1.9;
+system {
+    login {
+        user jcluser {
+            uid 2000;
+            class super-user;
+            authentication {
+                encrypted-password "$6$iKgVA34A$AR62xbpriXxVbDQuT6DMOph1r069/ytRiJKThwdXK/Ol2U6k3knRxtPonzIHGmSzQUwdDgmbzT7JM9Rnx7QRF."; ## SECRET-DATA
+            }
+        }
+    }
+    root-authentication {
+        encrypted-password "$6$dSTbXxFy$KeCmFiHX6XSMkn3DX9GdrZY1Fb.iDnrGRpdJA9XWMvtaOKfvFe/n8yU2AMp8HJi5aj7ZVWazmdt.bkc4rtTss1"; ## SECRET-DATA
+    }
+    host-name vSRX2;
+    scripts {
+        language python;
+    }
+    services {
+        ssh {
+            root-login allow;
+        }
+        netconf {
+            ssh;
+        }
+        rest {
+            http {
+                port 3000;
+            }
+        }
+        web-management {
+            http {
+                interface fxp0.0;
+            }
+            https {
+                system-generated-certificate;
+                interface fxp0.0;
+            }
+        }
+    }
+    syslog {
+        user * {
+            any emergency;              
+        }
+        file messages {
+            any any;
+            authorization info;
+        }
+        file interactive-commands {
+            interactive-commands any;
+        }
+    }
+    license {
+        autoupdate {
+            url https://ae1.juniper.net/junos/key_retrieval;
+        }
+    }
+}
+interfaces {
+    ge-0/0/1 {
+        unit 0 {
+            family inet {
+                address 2.2.2.1/24;
+            }
+            family mpls;
+        }
+    }
+    fxp0 {
+        unit 0 {
+            family inet {
+                dhcp;
+            }
+        }
+    }
+    lo0 {
+        unit 0 {
+            family inet {
+                address 10.100.100.2/32;
+            }
+        }
+    }
+}
+routing-options {
+    static {
+        route 10.100.11.0/24 next-hop 10.100.12.1;
+    }
+}
+                                        
+[edit]
+jcluser@vSRX2# 
+
+*********************************************************
+**********************************************************
+**********************************************************
+jcluser@vSRX2> show configuration | display set 
+set version 18.3R1.9
+set system login user jcluser uid 2000
+set system login user jcluser class super-user
+set system login user jcluser authentication encrypted-password "$6$iKgVA34A$AR62xbpriXxVbDQuT6DMOph1r069/ytRiJKThwdXK/Ol2U6k3knRxtPonzIHGmSzQUwdDgmbzT7JM9Rnx7QRF."
+set system root-authentication encrypted-password "$6$dSTbXxFy$KeCmFiHX6XSMkn3DX9GdrZY1Fb.iDnrGRpdJA9XWMvtaOKfvFe/n8yU2AMp8HJi5aj7ZVWazmdt.bkc4rtTss1"
+set system host-name vSRX2
+set system scripts language python
+set system services ssh root-login allow
+set system services netconf ssh
+set system services rest http port 3000
+set system services web-management http interface fxp0.0
+set system services web-management https system-generated-certificate
+set system services web-management https interface fxp0.0
+set system syslog user * any emergency
+set system syslog file messages any any
+set system syslog file messages authorization info
+set system syslog file interactive-commands interactive-commands any
+set system license autoupdate url https://ae1.juniper.net/junos/key_retrieval
+set interfaces ge-0/0/1 unit 0 family inet address 2.2.2.1/24
+set interfaces ge-0/0/1 unit 0 family mpls
+set interfaces fxp0 unit 0 family inet dhcp
+set interfaces lo0 unit 0 family inet address 10.100.100.2/32
+set routing-options static route 10.100.11.0/24 next-hop 10.100.12.1
